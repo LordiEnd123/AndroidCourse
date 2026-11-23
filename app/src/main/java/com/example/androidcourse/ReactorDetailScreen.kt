@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ReactorDetailScreen(
     state: Reactor,
+    coolingPower: Int,
     onGenerate: () -> Unit,
     onCoolDown: () -> Unit,
     onRefuel: () -> Unit,
@@ -110,7 +111,7 @@ fun ReactorDetailScreen(
                 Text("Форсаж")
             }
             Button(onClick = onCoolDown, enabled = state.canCoolDown, modifier = Modifier.weight(1f)) {
-                Text("Охладить")
+                Text("Охладить (-${coolingPower}°C)")
             }
         }
         Spacer(modifier = Modifier.height(8.dp))

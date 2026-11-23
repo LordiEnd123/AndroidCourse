@@ -26,11 +26,15 @@ import kotlinx.serialization.Serializable
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val repository = (application as ReactorApplication).repository
         enableEdgeToEdge()
         setContent {
             MaterialTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ReactorApp(modifier = Modifier.padding(innerPadding))
+                    ReactorApp(
+                        repository = repository,
+                        modifier = Modifier.padding(innerPadding)
+                    )
                 }
             }
         }
@@ -48,9 +52,10 @@ data class ReactorDetailRoute(val reactorId: Int) : AppRoute
 
 @Composable
 fun ReactorApp(
-    modifier: Modifier = Modifier,
-    vm: ReactorViewModel = viewModel())
-{
+    repository: ReactorRepository,
+    modifier: Modifier = Modifier
+) {
+    val vm: ReactorViewModel = viewModel { ReactorViewModel(repository) }
     val backStack = rememberNavBackStack(ReactorListRoute)
 
     fun goBack() {
@@ -75,7 +80,9 @@ fun ReactorApp(
                             }
                         },
                         onAdd = vm::addReactor,
-                        onDelete = vm::removeReactor)
+                        onDelete = vm::removeReactor,
+                        onRetryWeather = vm::loadWeather
+                    )
                 }
 
                 is ReactorDetailRoute -> NavEntry(key) {
@@ -83,18 +90,20 @@ fun ReactorApp(
                     if (reactor != null) {
                         ReactorDetailScreen(
                             state = reactor,
+                            coolingPower = vm.uiState.currentCoolingPower,
                             onGenerate = { vm.generatePower(reactor.id) },
                             onCoolDown = { vm.coolDown(reactor.id) },
                             onRefuel = { vm.refuel(reactor.id) },
                             onRepair = { vm.repair(reactor.id) },
                             onReset = { vm.reset(reactor.id) },
-                            onBack = ::goBack)
+                            onBack = ::goBack
+                        )
                     } else {
                         Column(
                             modifier = Modifier.fillMaxSize().padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center)
-                        {
+                            verticalArrangement = Arrangement.Center
+                        ) {
                             Text("Генератор не найден")
                             Button(onClick = ::goBack) { Text("Назад") }
                         }

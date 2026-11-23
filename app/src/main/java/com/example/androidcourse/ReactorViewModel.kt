@@ -4,9 +4,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.serialization.SerializationException
+import retrofit2.HttpException
+import java.io.IOException
 
-class ReactorViewModel : ViewModel() {
+class ReactorViewModel(
+    private val repository: ReactorRepository
+) : ViewModel() {
     private var nextId = 11
+    private var weatherJob: Job? = null
 
     var uiState by mutableStateOf(
         ReactorNetworkUiState(
@@ -14,6 +23,37 @@ class ReactorViewModel : ViewModel() {
         )
     )
         private set
+
+    init {
+        loadWeather()
+    }
+
+    fun loadWeather() {
+        if (weatherJob?.isActive == true) return
+        weatherJob = viewModelScope.launch {
+            uiState = uiState.copy(weatherState = WeatherUiState.Loading)
+            val result = try {
+                WeatherUiState.Content(repository.fetchStationWeather())
+            } catch (e: IOException) {
+                WeatherUiState.Error(
+                    message = "Нет связи с метеостанцией. Охлаждение: штатное (-35°C)",
+                    canRetry = true
+                )
+            } catch (e: HttpException) {
+                val canRetry = e.code() >= 500
+                WeatherUiState.Error(
+                    message = "Ошибка сервера (${e.code()}). Охлаждение: штатное (-35°C)",
+                    canRetry = canRetry
+                )
+            } catch (e: SerializationException) {
+                WeatherUiState.Error(
+                    message = "Некорректный формат данных метеостанции",
+                    canRetry = false
+                )
+            }
+            uiState = uiState.copy(weatherState = result)
+        }
+    }
 
     fun addReactor() {
         val id = nextId++
@@ -29,7 +69,12 @@ class ReactorViewModel : ViewModel() {
     }
 
     fun generatePower(id: Int) = update(id, Reactor::generatePower)
-    fun coolDown(id: Int) = update(id, Reactor::coolDown)
+
+    fun coolDown(id: Int) {
+        val power = uiState.currentCoolingPower
+        update(id) { it.coolDown(power) }
+    }
+
     fun refuel(id: Int) = update(id, Reactor::refuel)
     fun repair(id: Int) = update(id, Reactor::repair)
     fun reset(id: Int) = update(id, Reactor::reset)

@@ -1,5 +1,11 @@
 package com.example.androidcourse
 
+sealed interface WeatherUiState {
+    data object Loading : WeatherUiState
+    data class Content(val weather: StationWeather) : WeatherUiState
+    data class Error(val message: String, val canRetry: Boolean) : WeatherUiState
+}
+
 data class Reactor(
     val id: Int,
     val name: String,
@@ -9,8 +15,8 @@ data class Reactor(
     val maxTemp: Int = 120,
     val hull: Int = 100,
     val maxHull: Int = 100,
-    val totalEnergy: Int = 0)
-{
+    val totalEnergy: Int = 0
+) {
     val isBroken: Boolean get() = hull <= 0
     val isOverheated: Boolean get() = !isBroken && temperature >= 85
     val isLowFuel: Boolean get() = !isBroken && fuel < 20
@@ -29,14 +35,16 @@ data class Reactor(
             fuel = (fuel - 20).coerceAtLeast(0),
             temperature = newTemperature,
             hull = (hull - damage).coerceAtLeast(0),
-            totalEnergy = totalEnergy + 50)
+            totalEnergy = totalEnergy + 50
+        )
     }
 
-    fun coolDown(): Reactor {
+    fun coolDown(coolingPower: Int = 35): Reactor {
         if (!canCoolDown) return this
         return copy(
             fuel = (fuel - 10).coerceAtLeast(0),
-            temperature = (temperature - 35).coerceAtLeast(20))
+            temperature = (temperature - coolingPower).coerceAtLeast(20)
+        )
     }
 
     fun refuel(): Reactor {
@@ -53,8 +61,11 @@ data class Reactor(
 }
 
 data class ReactorNetworkUiState(
-    val reactors: List<Reactor> = emptyList())
-{
+    val reactors: List<Reactor> = emptyList(),
+    val weatherState: WeatherUiState = WeatherUiState.Loading
+) {
     val totalEnergy: Int get() = reactors.sumOf { it.totalEnergy }
     val activeCount: Int get() = reactors.count { it.canGenerate }
+    val currentCoolingPower: Int
+        get() = (weatherState as? WeatherUiState.Content)?.weather?.coolingPower ?: 35
 }
