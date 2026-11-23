@@ -68,7 +68,14 @@ class ReactorViewModel(
         )
     }
 
-    fun generatePower(id: Int) = update(id, Reactor::generatePower)
+    fun generatePower(id: Int) {
+        val target = uiState.reactors.find { it.id == id } ?: return
+        if (!target.canGenerate) return
+        uiState = uiState.copy(
+            reactors = uiState.reactors.map { if (it.id == id) it.generatePower() else it },
+            totalEnergy = uiState.totalEnergy + 50
+        )
+    }
 
     fun coolDown(id: Int) {
         val power = uiState.currentCoolingPower

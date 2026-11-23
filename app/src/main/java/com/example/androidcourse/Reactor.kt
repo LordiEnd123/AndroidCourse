@@ -23,7 +23,7 @@ data class Reactor(
     val isSafeForMaintenance: Boolean get() = !isBroken && temperature <= 50
 
     val canGenerate: Boolean get() = !isBroken && fuel >= 20 && temperature <= 105
-    val canCoolDown: Boolean get() = !isBroken && temperature > 20 && fuel >= 10
+    val canCoolDown: Boolean get() = !isBroken && temperature > 20
     val canRefuel: Boolean get() = isSafeForMaintenance && fuel < maxFuel
     val canRepair: Boolean get() = isSafeForMaintenance && hull < maxHull
 
@@ -41,10 +41,7 @@ data class Reactor(
 
     fun coolDown(coolingPower: Int = 35): Reactor {
         if (!canCoolDown) return this
-        return copy(
-            fuel = (fuel - 10).coerceAtLeast(0),
-            temperature = (temperature - coolingPower).coerceAtLeast(20)
-        )
+        return copy(temperature = (temperature - coolingPower).coerceAtLeast(20))
     }
 
     fun refuel(): Reactor {
@@ -62,9 +59,9 @@ data class Reactor(
 
 data class ReactorNetworkUiState(
     val reactors: List<Reactor> = emptyList(),
+    val totalEnergy: Int = 0,
     val weatherState: WeatherUiState = WeatherUiState.Loading
 ) {
-    val totalEnergy: Int get() = reactors.sumOf { it.totalEnergy }
     val activeCount: Int get() = reactors.count { it.canGenerate }
     val currentCoolingPower: Int
         get() = (weatherState as? WeatherUiState.Content)?.weather?.coolingPower ?: 35
